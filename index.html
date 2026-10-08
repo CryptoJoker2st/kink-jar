@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的性癖罐</title>
+<style>
+  :root{
+    --pink:#ff7eb3; --green:#b8ff7e; --blue:#7ec8ff; --slate:#475569;
+    --bg:#0f172a; --card:#1e293b; --ink:#f1f5f9; --muted:#94a3b8;
+    --like:#ff7eb3; --curious:#b8ff7e; --unknown:#475569; --dislike:#7ec8ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:640px; margin:0 auto; padding:20px 16px 60px;}
+  header{text-align:center; padding:18px 0 6px;}
+  header h1{margin:0; font-size:30px; color:#f8fafc; letter-spacing:2px;}
+  header p{margin:8px 0 0; font-size:13px; color:var(--muted);}
+  .progress{position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0;}
+  .bar{height:10px; background:#1e293b; border-radius:6px; overflow:hidden;}
+  .bar i{display:block; height:100%; width:0; background:linear-gradient(90deg,#ff7eb3,#f9a8d4); border-radius:6px; transition:width .25s;}
+  .ptext{font-size:12px; color:var(--muted); margin-top:6px; text-align:right;}
+  .item{background:var(--card); border:1px solid rgba(148,163,184,.14); border-radius:14px; padding:12px 14px; margin:10px 0;
+    display:flex; align-items:center; gap:10px;}
+  .item .num{flex:0 0 26px; height:26px; border-radius:50%; background:rgba(255,126,179,.14); color:var(--pink);
+    font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .item .label{flex:1; font-size:15px; color:var(--ink);}
+  .item .label input{width:100%; font-size:15px; border:1px dashed var(--pink); border-radius:8px; padding:6px 8px; color:var(--ink); background:#0f172a;}
+  .item .desc{display:block; font-size:12px; color:var(--muted); margin-top:5px; line-height:1.55; font-weight:400;}
+  .opts{display:flex; gap:6px; flex-wrap:wrap;}
+  .opts button{border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); border-radius:999px; padding:7px 12px;
+    font-size:13px; color:#cbd5e1; cursor:pointer;}
+  .opts button.on-like{background:var(--like); border-color:var(--like); color:#3b0a1e; font-weight:700;}
+  .opts button.on-curious{background:var(--curious); border-color:var(--curious); color:#1a2e05; font-weight:700;}
+  .opts button.on-unknown{background:var(--unknown); border-color:var(--unknown); color:#fff; font-weight:700;}
+  .opts button.on-dislike{background:var(--dislike); border-color:var(--dislike); color:#0c2a4e; font-weight:700;}
+  .actions{position:sticky; bottom:0; background:linear-gradient(transparent,var(--bg) 30%);
+    padding:18px 0 8px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
+  .btn{border:none; border-radius:999px; padding:13px 26px; font-size:15px; cursor:pointer; font-weight:700;}
+  .btn.primary{background:var(--pink); color:#3b0a1e; box-shadow:0 4px 14px rgba(255,126,179,.35);}
+  .btn.ghost{background:transparent; color:var(--pink); border:2px solid rgba(255,126,179,.5);}
+  .btn.small{padding:9px 16px; font-size:13px; font-weight:400;}
+  .toolbar{display:flex; gap:8px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap;}
+  .modal{position:fixed; inset:0; background:rgba(2,6,23,.78); display:none; z-index:50;
+    align-items:flex-start; justify-content:center; overflow-y:auto; padding:24px 12px;}
+  .modal.show{display:flex;}
+  .card{background:#1e293b; border-radius:18px; padding:18px; max-width:560px; width:100%; text-align:center; border:1px solid rgba(148,163,184,.15);}
+  .card canvas{width:100%; height:auto; border-radius:12px; border:1px solid rgba(148,163,184,.2);}
+  .card .row{display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;}
+  .hint{font-size:12px; color:#64748b; text-align:center; margin-top:16px; line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🫙 我的性癖罐</h1>
+    <p>凭直觉表态 · 不想答的可以留空 · 数据只保存在本机</p>
+  </header>
+
+  <div class="progress">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="ptext" id="ptext">已填 0 / 35</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn ghost small" id="editBtn">✏️ 编辑题目</button>
+    <button class="btn ghost small" id="resetBtn">🗑 清空重填</button>
+  </div>
+
+  <main id="list"></main>
+
+  <div class="actions">
+    <button class="btn primary" id="genBtn">🫙 生成我的罐子图</button>
+    <button class="btn ghost" id="copyBtn">📋 复制文字总结</button>
+  </div>
+
+  <p class="hint">单文件网页，可离线使用。<br>想改题目点「编辑题目」，改完自动保存；换设备会丢失记录。</p>
+</div>
+
+<div class="modal" id="modal">
+  <div class="card">
+    <canvas id="jarCanvas" width="1080" height="1920"></canvas>
+    <div class="row">
+      <button class="btn primary" id="dlBtn">⬇️ 下载 PNG</button>
+      <button class="btn ghost" id="closeBtn">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 题目（可自行编辑文案） ===== */
+const DEFAULT_ITEMS = [
+  // 拘束 / 感官
+  "蒙眼","绳缚","手铐 / 束缚带","口球 / 堵嘴","戴颈圈","感官剥夺（蒙眼+耳塞）",
+  // 支配 / 服从
+  "主奴角色","听从命令","跪姿 / 跪拜","被牵引（牵绳散步）","高潮控制","延迟满足 / 禁欲",
+  // 疼痛 / 刺激
+  "打屁股","扇耳光（轻）","皮拍 / 鞭打","滴蜡","冰火刺激","玩弄乳头","轻咬 / 留下印记",
+  // 体液 / 排泄
+  "灌肠","圣水 play","深喉","颜射 / 口爆",
+  // 角色扮演 / 场景
+  "强制抵抗角色扮演","轮奸角色扮演","医生 / 护士扮演","制服扮演","宠物扮演",
+  "年龄差扮演","公共场合刺激","被拍摄记录","对镜做爱","多人 / 群交","交换伴侣","语言羞辱"
+];
+/* 每项的简短说明（自己写的中文版） */
+const DEFAULT_DESCS = [
+  "遮住眼睛，靠触觉、听觉去感受",
+  "用绳子捆绑身体，限制活动",
+  "用手铐或束缚带固定手脚",
+  "堵住嘴，剥夺说话的能力",
+  "戴上颈圈，象征归属与臣服",
+  "同时屏蔽视觉与听觉，放大其他感官",
+  "一方主导、一方服从的关系扮演",
+  "完全按照对方的指令行动",
+  "以跪姿表示臣服与顺从",
+  "像宠物一样被牵着走",
+  "高潮的时机由对方掌控",
+  "被要求忍耐、延后释放",
+  "用手或工具拍打臀部",
+  "轻扇脸颊带来的刺激感",
+  "用皮拍、散鞭抽打身体",
+  "把融化的蜡滴在皮肤上",
+  "用冰块或温热交替刺激皮肤",
+  "夹、拧、拉扯乳头",
+  "咬出痕迹、种草莓",
+  "向直肠注入液体清洗或刺激",
+  "与尿液相关的玩法",
+  "口交时深入喉咙",
+  "射精在脸上或口中",
+  "扮演强迫与反抗的情境（需事前同意）",
+  "扮演被多人侵犯的情境（需事前同意）",
+  "医疗场景的角色扮演",
+  "穿制服进行角色扮演",
+  "扮演小猫、小狗等宠物",
+  "扮演有年龄差距的关系",
+  "在可能被发现的场合亲热",
+  "做爱时拍照或录像留念",
+  "在镜子前看着彼此做爱",
+  "三人以上的性爱",
+  "与另一对伴侣交换",
+  "用言语贬低、羞辱对方"
+];
+const ATT = {
+  like:    {label:"喜欢",  color:"#ff7eb3", soft:"#ff7eb3", icon:"❤️"},
+  curious: {label:"好奇",  color:"#b8ff7e", soft:"#b8ff7e", icon:"👀"},
+  unknown: {label:"没概念", color:"#475569", soft:"#475569", icon:"❔"},
+  dislike: {label:"讨厌",  color:"#7ec8ff", soft:"#7ec8ff", icon:"✖️"}
+};
+const ORDER = ["like","curious","unknown","dislike"];
+const LS_A = "mykinkjar_answers_v1", LS_L = "mykinkjar_labels_v1";
+
+let answers = {}, labels = null, editing = false;
+try{ answers = JSON.parse(localStorage.getItem(LS_A)||"{}"); }catch(e){ answers={}; }
+try{ labels = JSON.parse(localStorage.getItem(LS_L)||"null"); }catch(e){ labels=null; }
+const items = () => (labels && labels.length===DEFAULT_ITEMS.length) ? labels : DEFAULT_ITEMS;
+const save = () => {
+  localStorage.setItem(LS_A, JSON.stringify(answers));
+  if(labels) localStorage.setItem(LS_L, JSON.stringify(labels));
+};
+
+/* ===== 列表渲染 ===== */
+const listEl = document.getElementById("list");
+function render(){
+  const it = items();
+  listEl.innerHTML = "";
+  it.forEach((t,i)=>{
+    const d = document.createElement("div"); d.className="item";
+    const cur = answers[i];
+    const desc = DEFAULT_DESCS[i] || "";
+    let labelHtml = editing
+      ? `<input data-i="${i}" value="${t.replace(/"/g,"&quot;")}">`
+      : `<span>${t}</span><small class="desc">${desc}</small>`;
+    d.innerHTML = `<div class="num">${i+1}</div><div class="label">${labelHtml}</div><div class="opts">${
+      ORDER.map(k=>`<button data-i="${i}" data-k="${k}" class="${cur===k?"on-"+k:""}">${ATT[k].label}</button>`).join("")
+    }</div>`;
+    listEl.appendChild(d);
+  });
+  listEl.querySelectorAll(".opts button").forEach(b=>b.onclick=()=>{
+    const i=b.dataset.i, k=b.dataset.k;
+    answers[i] = (answers[i]===k) ? undefined : k;
+    if(answers[i]===undefined) delete answers[i];
+    save(); render();
+  });
+  if(editing){
+    listEl.querySelectorAll(".label input").forEach(inp=>inp.onchange=()=>{
+      if(!labels) labels = items().slice();
+      labels[+inp.dataset.i]=inp.value.trim()||DEFAULT_ITEMS[+inp.dataset.i];
+      save();
+    });
+  }
+  const n = Object.keys(answers).length;
+  document.getElementById("barFill").style.width = (n/it.length*100)+"%";
+  document.getElementById("ptext").textContent = `已填 ${n} / ${it.length}`;
+}
+document.getElementById("editBtn").onclick = e=>{
+  editing=!editing;
+  e.target.textContent = editing ? "✅ 完成编辑" : "✏️ 编辑题目";
+  if(!editing) save();
+  render();
+};
+document.getElementById("resetBtn").onclick = ()=>{
+  if(!confirm("清空所有已填答案吗？（题目文案保留）")) return;
+  answers={}; localStorage.removeItem(LS_A); render();
+};
+
+/* ===== 文字总结 ===== */
+function summaryText(){
+  const it = items();
+  const groups={}; ORDER.forEach(k=>groups[k]=[]);
+  const blank=[];
+  it.forEach((t,i)=>{ const a=answers[i]; (a?groups[a]:blank).push(t); });
+  const n=Object.keys(answers).length;
+  let s=`🫙 我的性癖罐（${it.length}项 · 已填${n}项）\n`;
+  ORDER.forEach(k=>{ s+=`\n${ATT[k].icon} ${ATT[k].label}（${groups[k].length}）：${groups[k].join("、")||"—"}`; });
+  if(blank.length) s+=`\n\n未填（${blank.length}）：${blank.join("、")}`;
+  return s;
+}
+document.getElementById("copyBtn").onclick = async ()=>{
+  try{ await navigator.clipboard.writeText(summaryText()); alert("已复制，去粘贴分享吧～"); }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=summaryText();
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+    alert("已复制，去粘贴分享吧～");
+  }
+};
+
+/* ===== 罐子图 ===== */
+function roundRect(c,x,y,w,h,r){
+  c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+/* 结果图：对齐原站 —— 深海军蓝底 + 5x7 小奶瓶网格 + 图例 + 落款 */
+function drawMiniBottle(c, x, y, s, fillColor, fillFrac){
+  c.save();
+  c.translate(x, y); c.scale(s, s);
+  const body = ()=>{
+    c.beginPath();
+    c.moveTo(30, 32);
+    c.bezierCurveTo(16, 38, 6, 50, 5, 68);
+    c.lineTo(5, 118);
+    c.quadraticCurveTo(5, 144, 28, 144);
+    c.lineTo(72, 144);
+    c.quadraticCurveTo(95, 144, 95, 118);
+    c.lineTo(95, 68);
+    c.bezierCurveTo(94, 50, 84, 38, 70, 32);
+    c.closePath();
+  };
+  // 盖子
+  c.fillStyle = "#eef1f6"; roundRect(c, 14, 2, 72, 11, 5.5); c.fill();
+  c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.5)";
+  roundRect(c, 14, 2, 72, 11, 5.5); c.stroke();
+  c.strokeStyle = "rgba(148,163,184,.45)"; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(20, 7.5); c.lineTo(80, 7.5); c.stroke();
+  // 颈环
+  c.fillStyle = "rgba(255,255,255,.08)"; roundRect(c, 12, 14, 76, 6, 3); c.fill();
+  c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.4)";
+  roundRect(c, 12, 14, 76, 6, 3); c.stroke();
+  // 瓶颈
+  c.lineWidth = 1.8; c.strokeStyle = "rgba(255,255,255,.35)";
+  c.beginPath(); c.moveTo(20, 20); c.lineTo(20, 33); c.stroke();
+  c.beginPath(); c.moveTo(80, 20); c.lineTo(80, 33); c.stroke();
+  // 玻璃底
+  body(); c.fillStyle = "rgba(255,255,255,.05)"; c.fill();
+  // 液体（平顶，原站样式）
+  if (fillFrac > 0 && fillColor){
+    c.save(); body(); c.clip();
+    const top = 32, bot = 144, h = (bot - top) * fillFrac;
+    c.fillStyle = fillColor;
+    c.fillRect(0, bot - h, 100, h + 1);
+    c.restore();
+  }
+  // 描边
+  body(); c.lineWidth = 2.5; c.lineJoin = "round";
+  c.strokeStyle = "rgba(255,255,255,.4)"; c.stroke();
+  // 高光
+  c.beginPath(); c.moveTo(16, 62);
+  c.quadraticCurveTo(12, 92, 14, 116);
+  c.lineWidth = 3.5; c.lineCap = "round";
+  c.strokeStyle = "rgba(255,255,255,.2)"; c.stroke();
+  c.beginPath(); c.moveTo(72, 52);
+  c.quadraticCurveTo(80, 60, 82, 70);
+  c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.12)"; c.stroke();
+  c.restore();
+}
+function drawJar(){
+  const cv = document.getElementById("jarCanvas");
+  const W = 1080, H = 2300;
+  cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+  const it = items();
+  const FONT = "-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
+  const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}.${today.getMonth()+1}.${today.getDate()}`;
+  const n = Object.keys(answers).length;
+
+  c.fillStyle = "#0f172a"; c.fillRect(0, 0, W, H);
+
+  // 标题
+  c.textAlign = "center";
+  c.fillStyle = "#f8fafc"; c.font = `700 60px ${FONT}`;
+  c.fillText("我的性癖罐（BDSM篇）", W/2, 88);
+  c.fillStyle = "#94a3b8"; c.font = `28px ${MONO}`;
+  c.fillText(`${dateStr} · ${it.length} items · ${n} answered`, W/2, 140);
+
+  // 图例（顺序/配色对原站）
+  const LEG = [
+    { label: "没概念", color: null },
+    { label: "讨厌", color: "#7ec8ff" },
+    { label: "好奇", color: "#b8ff7e" },
+    { label: "喜欢", color: "#ff7eb3" }
+  ];
+  c.font = `28px ${FONT}`;
+  const widths = LEG.map(o => c.measureText(o.label).width);
+  const gap = 46, chip = 30;
+  const totalW = widths.reduce((a,b)=>a+b,0) + LEG.length*chip + (LEG.length-1)*gap;
+  let lx = (W - totalW)/2;
+  c.textAlign = "left";
+  LEG.forEach((o, idx)=>{
+    c.fillStyle = o.color || "rgba(255,255,255,.06)";
+    roundRect(c, lx, 168, chip, chip, 8); c.fill();
+    if (!o.color){
+      c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.35)";
+      roundRect(c, lx, 168, chip, chip, 8); c.stroke();
+    }
+    c.fillStyle = "#e2e8f0";
+    c.fillText(o.label, lx + chip + 10, 193);
+    lx += chip + 10 + widths[idx] + gap;
+  });
+
+  // 网格 5x7
+  const FILL = {
+    like:    { color: "#ff7eb3", frac: 1 },
+    curious: { color: "#b8ff7e", frac: 0.6 },
+    unknown: null,
+    dislike: { color: "#7ec8ff", frac: 1 }
+  };
+  const cols = 5, rows = 7, gridTop = 250, gridBottom = H - 120;
+  const cellW = W/cols, cellH = (gridBottom-gridTop)/rows;
+  const bs = 1.5, bw = 150, bh = 225;
+  it.forEach((t, i)=>{
+    const col = i%cols, row = Math.floor(i/cols);
+    const bx = col*cellW + (cellW-bw)/2;
+    const by = gridTop + row*cellH + 4;
+    const a = answers[i], f = a ? FILL[a] : null;
+    drawMiniBottle(c, bx, by, bs, f ? f.color : null, f ? f.frac : 0);
+    c.fillStyle = a ? "#f1f5f9" : "#475569";
+    c.textAlign = "center";
+    c.font = `${t.length > 8 ? 20 : 25}px ${FONT}`;
+    c.fillText(t, col*cellW + cellW/2, by + bh + 32);
+  });
+
+  // 落款
+  c.textAlign = "center";
+  c.fillStyle = "rgba(255,255,255,.5)"; c.font = `26px ${FONT}`;
+  c.fillText("Manufactured by 我的性癖罐", W/2, H - 42);
+}
+document.getElementById("genBtn").onclick = ()=>{
+  drawJar();
+  document.getElementById("modal").classList.add("show");
+};
+document.getElementById("closeBtn").onclick = ()=>document.getElementById("modal").classList.remove("show");
+document.getElementById("modal").onclick = e=>{
+  if(e.target.id==="modal") e.target.classList.remove("show");
+};
+document.getElementById("dlBtn").onclick = ()=>{
+  const a=document.createElement("a");
+  a.download="我的性癖罐.png";
+  a.href=document.getElementById("jarCanvas").toDataURL("image/png");
+  a.click();
+};
+
+render();
+</script>
+</body>
+</html>
